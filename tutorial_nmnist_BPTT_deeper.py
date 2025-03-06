@@ -18,12 +18,12 @@ except ImportError:
     from tonic.datasets.nmnist import NMNIST
 
 # download dataset
-root_dir = "/home/parkjoe/PycharmProjects/sinabs-dynapcnn/datasets"
+root_dir = "/home/yongjin/PycharmProjects/sinabs-dynapcnn/datasets"
 _ = NMNIST(save_to=root_dir, train=True)
 _ = NMNIST(save_to=root_dir, train=False)
 
 sample_data, label = NMNIST(save_to=root_dir, train=False)[0]
-
+print(type(NMNIST(save_to=root_dir, train=False)[0]))
 print(sample_data)
 print(f"type of data is: {type(sample_data)}")
 print(f"time length of sample data is: {sample_data['t'][-1] - sample_data['t'][0]} micro seconds")
@@ -37,7 +37,7 @@ from tonic.transforms import ToFrame
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import SGD
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from torch.nn import CrossEntropyLoss
 #######################################################################################################
 # Train SNN with BPTT
@@ -48,33 +48,34 @@ import sinabs.layers as sl
 from torch import nn
 from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
 
-epochs = 5
+epochs = 1
 lr = 1e-3
-batch_size = 4
-num_workers = 4
+batch_size = 64
+num_workers = 8
 device = "cuda:0"
 shuffle = True
 
 # just replace the ReLU layer with the sl.IAFSqueeze
 snn_bptt = nn.Sequential(
-            nn.Conv2d(in_channels=2, out_channels=8, kernel_size=3, padding=1),
-            sl.IAFSqueeze(spike_threshold=1.0, batch_size=4, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
+            # [2, 32, 32] -> [32, 32, 32]
+            nn.Conv2d(in_channels=2, out_channels=8, kernel_size=3, stride=1, padding=1),
+            sl.IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
             nn.AvgPool2d(kernel_size=2, stride=2),
 
             nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, padding=1),
-            sl.IAFSqueeze(batch_size=4, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
+            sl.IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
             nn.AvgPool2d(kernel_size=2, stride=2),
 
             nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=1),
-            sl.IAFSqueeze(batch_size=4, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
+            sl.IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
             nn.AvgPool2d(kernel_size=2, stride=2),
 
             nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1, stride=2),
-            sl.IAFSqueeze(batch_size=4, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
+            sl.IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
 
             nn.Flatten(),
             nn.Linear(32 * 2 * 2, 10),
-            sl.IAFSqueeze(batch_size=4, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
+            sl.IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, surrogate_grad_fn=PeriodicExponential()),
 )
 
 # init the model weights
@@ -112,7 +113,6 @@ optimizer = SGD(params=snn_bptt.parameters(), lr=lr)
 criterion = CrossEntropyLoss()
 
 for e in range(epochs):
-
     # train
     train_p_bar = tqdm(snn_train_dataloader)
     for data, label in train_p_bar:
@@ -176,7 +176,7 @@ print(snn_bptt) # rechange EXODUS IAFSqueeze to IAFSqueeze
 # Save trained SNN
 import os
 
-base_save_path = "/home/parkjoe/PycharmProjects/sinabs-dynapcnn/saved_models"
+base_save_path = "/home/yongjin/PycharmProjects/sinabs-dynapcnn/saved_models"
 model_name = "tutorial_nmnist_BPTT_deeper"
 
 existing_files = os.listdir(base_save_path)

@@ -7,29 +7,36 @@ import samna
 #######################################################################################################
 import torch
 from sinabs.backend.dynapcnn import DynapcnnNetwork
-from tonic.datasets.nmnist import NMNIST
 from torch.utils.data import Subset
-from tqdm.notebook import tqdm
+from torch.utils.data import random_split
+from tqdm import tqdm
+from torch import nn
+import sinabs.layers as sl
+
+from lib_Audio_MNIST import Audio_MNIST_func as audio_mnist
+from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
+
 
 # Depoly SNN To The Devkit
+vgg_speck = torch.load("/home/yongjin/PycharmProjects/sinabs-dynapcnn/saved_models/audio_snn_vgg_speck_100_0.pth", weights_only=False)
+print(vgg_speck)
 #######################################################################################################
-n_time_steps = 100
+# cpu_snn = snn_convert.to(device="cpu")
+root_dir = "/home/yongjin/PycharmProjects/sinabs-dynapcnn/datasets/Audio-MNIST-Spike_train_100"
+audio_mnist_dataset = audio_mnist.AudioMNISTSpikeTrainDataset(root_dir)
+
+train_ratio = 0.9
+num_train = int(len(audio_mnist_dataset) * train_ratio)
+num_test = len(audio_mnist_dataset) - num_train
+
+# Train/Test 데이터셋 분할
+train_ds, test_ds = random_split(audio_mnist_dataset, [num_train, num_test])
+
+
 
 # cpu_snn = snn_convert.to(device="cpu")
-root_dir = "/home/yongjin/PycharmProjects/sinabs-dynapcnn/datasets"
-
-_ = NMNIST(save_to=root_dir, train=True)
-_ = NMNIST(save_to=root_dir, train=False)
-
-nmnist_train = NMNIST(save_to=root_dir, train=True)
-nmnist_test = NMNIST(save_to=root_dir, train=False)
-
-snn_convert = torch.load("/home/parkjoe/PycharmProjects/sinabs-dynapcnn/saved_models/tutorial_nmnist_conversion_deeper20240308_152441.pth")
-print(snn_convert)
-
-# cpu_snn = snn_convert.to(device="cpu")
-cpu_snn = snn_convert.to(device="cpu")
-dynapcnn = DynapcnnNetwork(snn=cpu_snn, input_shape=(2, 34, 34), discretize=True, dvs_input=True)
+cpu_snn = vgg_speck.to(device="cpu")
+dynapcnn = DynapcnnNetwork(snn=cpu_snn, input_shape=(1, 32, 32), discretize=True, dvs_input=False)
 devkit_name = "speck2fdevkit"
 
 # use the `to` method of DynapcnnNetwork to deploy the SNN to the devkit
@@ -52,9 +59,9 @@ samna_graph.start()
 power_monitor.start_auto_power_measurement(100) # 100 Hz sample rate
 #######################################################################################################
 # Inference On The Devkit
-snn_test_dataset = NMNIST(save_to=root_dir, train=False)
+snn_test_dataset =  test_ds
 # for time-saving, we only select a subset for on-chip infernce， here we select 1/100 for an example run
-subset_indices = list(range(0, len(snn_test_dataset), 100))
+subset_indices = list(range(0, len(snn_test_dataset), 1))
 #subset_indices = list(range(len(snn_test_dataset))) # all test data
 snn_test_dataset = Subset(snn_test_dataset, subset_indices)
 

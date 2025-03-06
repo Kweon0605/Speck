@@ -1,3 +1,6 @@
 sinabs-tutorial/LeNet5_MNIST_models/
 saved_models/
 datasets/
+event-tfds/
+samna.log
+

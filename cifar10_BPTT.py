@@ -15,7 +15,7 @@ except ImportError:
     from tonic.datasets.nmnist import NMNIST
 
 # download dataset
-root_dir = "/home/parkjoe/PycharmProjects/sinabs-dynapcnn/datasets"
+root_dir = "/home/yongjin/PycharmProjects/sinabs-dynapcnn/datasets"
 _ = NMNIST(save_to=root_dir, train=True)
 _ = NMNIST(save_to=root_dir, train=False)
 
@@ -34,7 +34,7 @@ from tonic.transforms import ToFrame
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import SGD
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from torch.nn import CrossEntropyLoss
 #######################################################################################################
 # Train SNN with BPTT
@@ -47,7 +47,7 @@ from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
 
 epochs = 5
 lr = 1e-3
-batch_size = 4
+batch_size = 256
 num_workers = 4
 device = "cuda:0"
 shuffle = True
